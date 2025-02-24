@@ -92,7 +92,7 @@ if __name__ == "__main__":
     for _ in range(1000):
         A = np.append(A, np.array(Particle(np.random.rand(2))))
     
-    root = Cell(rLow=[0.0, 0.0],rHigh=[1.0, 1.0],lo=0,hi=len(A) - 1)
+    root = Cell(rLow=np.ndarray([0.0, 0.0]),rHigh=np.ndarray([1.0, 1.0]),lo=0,hi=len(A) - 1)
     plot_particles(A=A)
     tree_builder(root,A,0)
     recursive_tree_plotter(root=root)
