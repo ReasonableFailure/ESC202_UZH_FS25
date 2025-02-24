@@ -7,7 +7,7 @@ class Particle:
         self.r = r
 
 class Cell:
-    def  __init__(self,rHigh:np.number,rLow:np.number, lo: int, hi:int):
+    def  __init__(self,rHigh:np.ndarray,rLow:np.ndarray, lo: int, hi:int):
         self.leftChild = None 
         self.rightChild = None
         self.upperBound = rHigh
@@ -59,14 +59,14 @@ def tree_builder(root: Cell, A: np.ndarray[Particle], dim: int):
     if s > root.index_low:
         left_cell = Cell(rLow_Left, rHigh_Left, root.index_low, s - 1)
         root.leftChild = left_cell
-        if len(A[root.iLower:s]) > 8:
+        if len(A[root.index_low:s]) > 8:
             tree_builder(A, left_cell, 1 - dim) # alternate splitting dimensions
 
     # The right cell is generated if a right partition exists and then recursed into.
     if s <= root.index_high:
         right_cell = Cell(rLow_Right, rHigh_Right, s, root.index_low)
         root.upperCell = right_cell
-        if len(A[s:root.iUpper + 1]) > 8:
+        if len(A[s:root.index_high + 1]) > 8:
             tree_builder(A, right_cell, 1 - dim) # alternate splitting dimensions
 
 
