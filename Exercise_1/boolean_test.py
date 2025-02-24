@@ -6,17 +6,20 @@ def no_particle_test() -> bool:
     return s == None 
 
 def all_particles_right() -> bool:
-    A = np.array([Particle(np.array([1.0, 1.0])),Particle(np.array([0.9,0.3])),Particle(np.array([0.7,0.4])),Particle(np.array([0.6,0.3]))])
+    A = np.array([Particle(np.array([1.0, 1.0]))
+                  ,Particle(np.array([0.9,0.3]))
+                  ,Particle(np.array([0.7,0.4]))
+                  ,Particle(np.array([0.6,0.3]))])
     s = partition(A, 0, len(A)-1, 0.5, 0)
     return s == 0
 
 def inverse_order() -> bool:
-    A= np.array([Particle(np.array[0.99,.99]),
-    Particle(np.array[.88,.88]),
-    Particle(np.array[.66,.66]),
-    Particle(np.array[.44,.44]),
-    Particle(np.array[.33,.33]),
-    Particle(np.array[.11,.11])])
+    A=np.array([Particle(np.array([0.99,0.99])),
+                Particle(np.array([0.88,0.88])),
+                Particle(np.array([0.66,0.66])),
+                Particle(np.array([0.44,0.44])),
+                Particle(np.array([0.33,0.33])),
+                Particle(np.array([0.11,0.11]))])
     s = partition(A, 0, len(A)-1,0.5,0)
     return s==2
 
@@ -35,3 +38,5 @@ def testrunner():
     print(f"inverse order test: {inverse_order()}")
     print(f"already ordered test: {already_ordered()}")
     
+if __name__ == "__main__":
+    testrunner()
