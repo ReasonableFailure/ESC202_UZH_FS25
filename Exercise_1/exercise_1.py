@@ -39,7 +39,7 @@ def partition(A: np.ndarray[Particle],i: int, j:int, v:float,d:bool) -> int :
 
     return known + i  #return first index of r[d] > v, accounting for interval starting at i.
     
-def tree_builder(root: Cell, A: np.ndarray[Particle], dim: int):
+def tree_builder(root: Cell, A: np.ndarray([Particle]), dim: int):
     v = 0.5 * (root.lowerBound[dim] + root.upperBound[dim])
     s = partition(A, root.index_low, root.index_high, v, dim)
 
