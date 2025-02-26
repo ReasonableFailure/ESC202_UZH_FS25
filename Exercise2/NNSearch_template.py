@@ -1,4 +1,5 @@
 from heapq import *
+import numpy as np
 
 # Priority queue
 class prioq:
@@ -9,10 +10,13 @@ class prioq:
             heappush(self.heap, sentinel)
 
     def replace(self, dist2, particle, dr):
-        .... use heapreplace here
+        
+        # .... use heapreplace here
+        pass
 
     def key(self):
-        .... define key here
+        # .... define key here
+        pass
 
 def celldist2(self, r):
     """Calculates the squared minimum distance between a particle
@@ -22,6 +26,8 @@ def celldist2(self, r):
     d1 = np.maximum(d1, d2)
     d1 = np.maximum(d1, np.zeros_like(d1))
     return d1.dot(d1)
+def neighbour_search(pq:prioq, root, particles, r, rOffset):
+    pass
 
 pq = prioq(k)
 
@@ -30,4 +36,4 @@ def neighbor_search_periodic(pq, root, particles, r, period):
     for y in [0.0, -period[1], period[1]]:
         for x in [0.0, -period[0], period[0]]:
             rOffset = np.array([x, y])
-            neighbor_search(pq, root, particles, r, rOffset)
+            neighbour_search(pq, root, particles, r, rOffset)
