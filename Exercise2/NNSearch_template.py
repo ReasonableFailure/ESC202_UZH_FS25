@@ -167,10 +167,10 @@ def recursive_tree_plotter(fig,root: Cell):
     yl = root.lowerBound[1]
     xh = root.upperBound[0]
     yh = root.upperBound[1]
-    fig.plot([xl, xh], [yl, yl], color="red",s=2)
-    fig.plot([xl, xh], [yh, yh], color="red",s=2)
-    fig.plot([xl, xl], [yl, yh], color="red",s=2)
-    fig.plot([xh, xh], [yl, yh], color="red",s=2)
+    fig.plot([xl, xh], [yl, yl], color="red")
+    fig.plot([xl, xh], [yh, yh], color="red")
+    fig.plot([xl, xl], [yl, yh], color="red")
+    fig.plot([xh, xh], [yl, yh], color="red")
     
 
 if __name__ == "__main__":
