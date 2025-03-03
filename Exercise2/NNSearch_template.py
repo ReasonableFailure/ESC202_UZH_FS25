@@ -1,7 +1,22 @@
 from heapq import *
+from matplotlib.patches import Circle
 import numpy as np
 from matplotlib import pyplot as plt
-from Exercise_1 import exercise_1 as ex
+# from Exercise_1 import exercise_1 as ex
+
+class Particle:
+    def __init__(self, r: np.ndarray):
+        self.r = r
+
+class Cell:
+    def  __init__(self,rHigh:np.array,rLow:np.array, lo, hi):
+        self.leftChild = None 
+        self.rightChild = None
+        self.upperBound = rHigh
+        self.lowerBound = rLow
+        self.index_low = lo
+        self.index_high = hi
+
 # Priority queue
 class prioq:
     def __init__(self, k):
@@ -10,7 +25,7 @@ class prioq:
         for i in range(k):
             heappush(self.heap, sentinel)
 
-    def replace(self, dist2:float, particle:ex.Particle, dr):
+    def replace(self, dist2:float, particle:Particle, dr):
         insert_node = (dist2,particle,dr)
         former_closest = heapreplace(self.heap,insert_node)
         return former_closest
@@ -19,32 +34,108 @@ class prioq:
         # .... define key here
         minimum_node = self.heap[0]
         return minimum_node[0] #Distance in the tuple.
+
+def partition(A: np.array,i: int, j:int, v:float,d:bool) -> int :
+    if len(A) == 0:
+        return None
+    interval = A[i : j + 1]
+    # Point to the last known particle for which r[d]>v.
+    known = 0
+    # Keeps track of the current index
+    current = 0
+    for particle in interval:
+        # particle position smaller, swap needed
+        if particle.r[d] < v:
+            # only swap if not same index, otherwise not change made
+            if known < current:
+                # search through array until a larger value is found, in order to be swappable
+                while interval[known].r[d] < v and known < current:
+                    known += 1
+                # make the swap
+                interval[known], interval[current] = (interval[current], interval[known])
+        # advance beyond swapped (now correct) index
+        current += 1
+
+    return known + i  #return first index of r[d] > v, accounting for interval starting at i.
+    
+def tree_builder(root: Cell, A: np.array, dim: int):
+    v = 0.5 * (root.lowerBound[dim] + root.upperBound[dim])
+    pivot_index = partition(A, root.index_low, root.index_high, v, dim)
+    # print(f"pivot_index = {pivot_index}")
+    #initialise left child cell
+    #split in x direction
+    if dim == 0:
+        ll_l = root.lowerBound
+        ur_l = np.array([v,root.upperBound[1]])
+    #split in y direction
+    else:
+        ll_l = root.lowerBound
+        ur_l = np.array([root.upperBound[0],v])
+
+    
+    #initialise right child
+    #split along x axis
+    if dim == 0:
+        ll_r = np.array([v,root.lowerBound[1]])
+        ur_r = root.upperBound
+    else:
+        ll_r = np.array([root.lowerBound[0],v])
+        ur_r = root.upperBound
+    
+    leftChild = Cell(ur_l,ll_l,root.index_low,pivot_index)
+    worth_it_left = pivot_index - root.index_low
+    # print(f"worth_it_left = {worth_it_left}")
+    if worth_it_left > 8:
+        root.leftChild = leftChild
+        tree_builder(leftChild,A,(1-dim))
+    
+    rightChild = Cell(ur_r,ll_r,pivot_index+1,root.index_high)
+    worth_it_right = root.index_high - pivot_index -1
+    # print(f"worth_it_right = {worth_it_right}")
+    if worth_it_right > 6:
+        root.rightChild = rightChild
+        tree_builder(rightChild,A,(1-dim))
+
 def celldist2(self, r):
     """Calculates the squared minimum distance between a particle
     position and this node."""
+    if not self:
+        return -np.inf 
     d1 = r - self.upperBound
     d2 = self.lowerBound - r
     d1 = np.maximum(d1, d2)
     d1 = np.maximum(d1, np.zeros_like(d1))
     return d1.dot(d1)
 
-def isLeaf(cell:ex.Cell):
-    return (cell.leftChild==None) and (cell.rightChild==None)
+def isLeaf(cell:Cell):
+    if cell:
+        return not cell.leftChild and not cell.rightChild
+    else:
+        return False
         
 
-def neighbour_search(pq:prioq, root:ex.Cell, particles:ex.Particle, r, rOffset): #this is ball_walk
+
+def neighbour_search(pq:prioq, root:Cell, particles:Particle, r, rOffset): #this is ball_walk
     cnt = 0
+    if not root:
+        return 0
     if isLeaf(root):
         for part in particles[root.index_low:root.index_high+1]:
             delta = part.r + rOffset - r
             distance = - delta.dot(delta)
             if distance > pq.key():
                 formerly = pq.replace(distance,part,delta)
+                cnt += 1
     else:
-        if -celldist2(root.rightChild,r-rOffset)>pq.key():
-            neighbour_search(pq=pq,root=root.rightChild,particles=particles,r=r,rOffset=rOffset)
-        if -celldist2(root.leftChild,r)>pq.key():
-            neighbour_search(pq=pq,root=root.leftChild,particles=particles,r=r,rOffset=rOffset)
+        if root.leftChild:
+            if -celldist2(root.rightChild,r-rOffset)>pq.key():
+                c = neighbour_search(pq=pq,root=root.rightChild,particles=particles,r=r,rOffset=rOffset)
+                cnt += c
+        if root.rightChild:
+            if-celldist2(root.leftChild,r)>pq.key():
+                c = neighbour_search(pq=pq,root=root.leftChild,particles=particles,r=r,rOffset=rOffset)
+                cnt+=c
+    return cnt
 
 def neighbour_search_periodic(pq, root, particles, r, period):
     # walk the closest image first (at offset=[0, 0])
@@ -55,23 +146,49 @@ def neighbour_search_periodic(pq, root, particles, r, period):
 
 def queue_plotter(pq:prioq, r, period, axis, color = 'red'):
     allneighbours = np.array([p[1].r for p in pq.heap])
-    print(allneighbours)
+    # print(allneighbours)
+    ax.scatter(x=allneighbours[:,0], y=allneighbours[:,1], c=color, s=2)
+    for y in [0.0, -period[1], period[1]]:
+        for x in [0.0, -period[0], period[0]]:
+            rOffset = np.array([x, y])
+            r2 = r.r - rOffset
+            ax.add_patch(Circle(xy=(r2[0], r2[1]), radius= np.sqrt(-pq.key()), edgecolor = 'k', fill=False))
+
+def plot_particles(fig,A:np.ndarray[Particle]):
+    fig.scatter([p.r[0] for p in A], [p.r[1] for p in A], color="black", s=2)
+
+def recursive_tree_plotter(fig,root: Cell):
+    
+    if(root.rightChild):
+        recursive_tree_plotter(fig, root=root.rightChild)
+    if(root.leftChild):
+        recursive_tree_plotter(fig,root=root.leftChild)
+    xl = root.lowerBound[0]
+    yl = root.lowerBound[1]
+    xh = root.upperBound[0]
+    yh = root.upperBound[1]
+    fig.plot([xl, xh], [yl, yl], color="red")
+    fig.plot([xl, xh], [yh, yh], color="red")
+    fig.plot([xl, xl], [yl, yh], color="red")
+    fig.plot([xh, xh], [yl, yh], color="red")
+    
 
 if __name__ == "__main__":
     A: np.ndarray = np.array([])
     for _ in range(1000):
-        p = ex.Particle(np.random.rand(2))
+        p =Particle(np.random.rand(2))
         A = np.append(A, np.array(p))
-    root = ex.Cell(rLow=np.array([0.0, 0.0]),rHigh=np.array([1.0, 1.0]),lo=0,hi=len(A) - 1)
-    ex.plot_particles(A=A)
-    ex.tree_builder(root,A,0)
+    root =Cell(rLow=np.array([0.0, 0.0]),rHigh=np.array([1.0, 1.0]),lo=0,hi=len(A) - 1)
+    tree_builder(root,A,0)
     pq = prioq(32)
-    middle_point = ex.Particle(np.array([0.5,0.5]))
-    neighbour_search_periodic(pq=pq,root=root,particles=A,r=middle_point,period=np.array([1.0,1.0]))
+    middle_point = Particle(np.array([0.5,0.5]))
+    neighbour_search_periodic(pq=pq,root=root,particles=A,r=np.array([0.5,0.5]),period=np.array([1.0,1.0]))
     pq2 = prioq(32)
-    far_point = ex.Particle(np.array([0.8,0.9]))
-    neighbour_search_periodic(pq2,root,A,far_point,np.array([1.0,1.0]))
+    far_point =Particle(np.array([0.8,0.9]))
+    neighbour_search_periodic(pq2,root,A,np.array([0.8,0.9]),np.array([1.0,1.0]))
     fig, ax = plt.subplots()
+    plot_particles(ax,A=A)
+    recursive_tree_plotter(ax,root=root)
     queue_plotter(pq, middle_point, np.array([1.0,1.0]), ax)
     queue_plotter(pq2, far_point, np.array([1.0,1.0]), ax, color='green')
     ax.set_aspect('equal', 'box')
