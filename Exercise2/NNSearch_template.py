@@ -147,7 +147,7 @@ def neighbour_search_periodic(pq, root, particles, r, period):
 def queue_plotter(pq:prioq, r, period, axis, color = 'red'):
     allneighbours = np.array([p[1].r for p in pq.heap])
     # print(allneighbours)
-    ax.scatter(x=allneighbours[:,0], y=allneighbours[:,1], c=color, s=2)
+    ax.scatter(x=allneighbours[:,0], y=allneighbours[:,1], c=color, s=4)
     for y in [0.0, -period[1], period[1]]:
         for x in [0.0, -period[0], period[0]]:
             rOffset = np.array([x, y])
@@ -155,7 +155,7 @@ def queue_plotter(pq:prioq, r, period, axis, color = 'red'):
             ax.add_patch(Circle(xy=(r2[0], r2[1]), radius= np.sqrt(-pq.key()), edgecolor = 'k', fill=False))
 
 def plot_particles(fig,A:np.ndarray[Particle]):
-    fig.scatter([p.r[0] for p in A], [p.r[1] for p in A], color="black", s=2)
+    fig.scatter([p.r[0] for p in A], [p.r[1] for p in A], color="black", s=4)
 
 def recursive_tree_plotter(fig,root: Cell):
     
@@ -167,10 +167,10 @@ def recursive_tree_plotter(fig,root: Cell):
     yl = root.lowerBound[1]
     xh = root.upperBound[0]
     yh = root.upperBound[1]
-    fig.plot([xl, xh], [yl, yl], color="red")
-    fig.plot([xl, xh], [yh, yh], color="red")
-    fig.plot([xl, xl], [yl, yh], color="red")
-    fig.plot([xh, xh], [yl, yh], color="red")
+    fig.plot([xl, xh], [yl, yl], color="red",s=2)
+    fig.plot([xl, xh], [yh, yh], color="red",s=2)
+    fig.plot([xl, xl], [yl, yh], color="red",s=2)
+    fig.plot([xh, xh], [yl, yh], color="red",s=2)
     
 
 if __name__ == "__main__":
