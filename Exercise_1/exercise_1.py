@@ -7,7 +7,7 @@ class Particle:
         self.r = r
 
 class Cell:
-    def  __init__(self,rHigh:np.ndarray,rLow:np.array, lo: int, hi:int):
+    def  __init__(self,rHigh:np.array,rLow:np.array, lo, hi):
         self.leftChild = None 
         self.rightChild = None
         self.upperBound = rHigh
@@ -16,7 +16,7 @@ class Cell:
         self.index_high = hi
 
 
-def partition(A: np.ndarray[Particle],i: int, j:int, v:float,d:bool) -> int :
+def partition(A: np.array,i: int, j:int, v:float,d:bool) -> int :
     if len(A) == 0:
         return None
     interval = A[i : j + 1]
@@ -39,7 +39,7 @@ def partition(A: np.ndarray[Particle],i: int, j:int, v:float,d:bool) -> int :
 
     return known + i  #return first index of r[d] > v, accounting for interval starting at i.
     
-def tree_builder(root: Cell, A: np.ndarray[Particle], dim: int):
+def tree_builder(root: Cell, A: np.array, dim: int):
     v = 0.5 * (root.lowerBound[dim] + root.upperBound[dim])
     s = partition(A, root.index_low, root.index_high, v, dim)
 
@@ -60,14 +60,14 @@ def tree_builder(root: Cell, A: np.ndarray[Particle], dim: int):
         left_cell = Cell(rLow_Left, rHigh_Left, root.index_low, s - 1)
         root.leftChild = left_cell
         if len(A[root.index_low:s]) > 8:
-            tree_builder(A, left_cell, 1 - dim) # alternate splitting dimensions
+            tree_builder(root=left_cell,A=A,dim=(1-dim)) # alternate splitting dimensions
 
     # The right cell is generated if a right partition exists and then recursed into.
     if s <= root.index_high:
         right_cell = Cell(rLow_Right, rHigh_Right, s, root.index_low)
         root.upperCell = right_cell
         if len(A[s:root.index_high + 1]) > 8:
-            tree_builder(A, right_cell, 1 - dim) # alternate splitting dimensions
+            tree_builder(root=right_cell,A=A,dim=(1-dim)) # alternate splitting dimensions
 
 
 def plot_particles(A:np.ndarray[Particle]):
@@ -92,7 +92,7 @@ if __name__ == "__main__":
     for _ in range(1000):
         A = np.append(A, np.array(Particle(np.random.rand(2))))
     
-    root = Cell(rLow=np.ndarray([0.0, 0.0]),rHigh=np.ndarray([1.0, 1.0]),lo=0,hi=len(A) - 1)
+    root = Cell(rLow=np.array([0.0, 0.0]),rHigh=np.array([1.0, 1.0]),lo=0,hi=len(A) - 1)
     plot_particles(A=A)
     tree_builder(root,A,0)
     recursive_tree_plotter(root=root)
