@@ -186,12 +186,12 @@ def recursive_tree_plotter(axis:plt.axis,root: Cell):
 if __name__ == "__main__":
     #initialise data
     A: np.ndarray = np.array([])
-    for _ in range(10000):
+    for _ in range(100000):
         p = Particle(np.random.rand(2))
         A = np.append(A, np.array(p))
     root = Cell(rLow=np.array([0.0, 0.0]),rHigh=np.array([1.0, 1.0]),name="root",lo=0,hi=len(A) - 1)
-    pq = prioq(32)
-    pq2 = prioq(32)
+    pq = prioq(300)
+    pq2 = prioq(300)
     middle_point = Particle(np.array([0.5,0.5]))
     far_point =Particle(np.array([0.1,0.99]))  
 
