@@ -7,6 +7,7 @@ from matplotlib import pyplot as plt
 class Particle:
     def __init__(self, r: np.ndarray):
         self.r = r
+        
 class Cell:
     def  __init__(self,rHigh:np.array,rLow:np.array, name:str, lo, hi):
         self.leftChild = None 
@@ -115,8 +116,6 @@ def isLeaf(cell:Cell):
         return not cell.leftChild and not cell.rightChild
     else:
         return False
-        
-
 
 def neighbour_search(pq:prioq, root:Cell, particles:Particle, r, rOffset): #this is ball_walk
     cnt = 0
@@ -188,13 +187,13 @@ if __name__ == "__main__":
     #initialise data
     A: np.ndarray = np.array([])
     for _ in range(10000):
-        p =Particle(np.random.rand(2))
+        p = Particle(np.random.rand(2))
         A = np.append(A, np.array(p))
     root = Cell(rLow=np.array([0.0, 0.0]),rHigh=np.array([1.0, 1.0]),name="root",lo=0,hi=len(A) - 1)
     pq = prioq(32)
     pq2 = prioq(32)
     middle_point = Particle(np.array([0.5,0.5]))
-    far_point =Particle(np.array([0.1,0.99]))
+    far_point =Particle(np.array([0.1,0.99]))  
 
     #operate on data
     tree_builder(root,A,0)
