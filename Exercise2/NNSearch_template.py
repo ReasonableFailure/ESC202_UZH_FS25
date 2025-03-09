@@ -99,7 +99,7 @@ def tree_builder(root: Cell, A: np.array, dim: int):
         tree_builder(rightChild,A,(1-dim))
     return root
 
-def celldist2(self, r):
+def celldist2(self:Cell, r:np.array):
     """Calculates the squared minimum distance between a particle
     position and this node."""
     if not self:
@@ -136,12 +136,12 @@ def neighbour_search(pq:prioq, root:Cell, particles:Particle, r, rOffset): #this
                 # print(f"After: {[(l[0],l[2]) for l in pq.heap]}\n")
                 cnt += 1
     else:  
-        if root.leftChild:
-            if -celldist2(root.rightChild,r-rOffset)>pq.key():
+        if root.rightChild:
+            if -celldist2(root.rightChild,r-rOffset) > pq.key():
                 c = neighbour_search(pq=pq,root=root.rightChild,particles=particles,r=r,rOffset=rOffset)
                 cnt += c
-        if root.rightChild:
-            if-celldist2(root.leftChild,r)>pq.key():
+        if root.leftChild:
+            if -celldist2(root.leftChild,r-rOffset) > pq.key():
                 c = neighbour_search(pq=pq,root=root.leftChild,particles=particles,r=r,rOffset=rOffset)
                 cnt+=c
     return cnt
@@ -187,26 +187,26 @@ def recursive_tree_plotter(axis:plt.axis,root: Cell):
 if __name__ == "__main__":
     #initialise data
     A: np.ndarray = np.array([])
-    for _ in range(100):
+    for _ in range(10000):
         p =Particle(np.random.rand(2))
         A = np.append(A, np.array(p))
     root = Cell(rLow=np.array([0.0, 0.0]),rHigh=np.array([1.0, 1.0]),name="root",lo=0,hi=len(A) - 1)
-    # pq = prioq(13)
-    pq2 = prioq(13)
+    pq = prioq(32)
+    pq2 = prioq(32)
     middle_point = Particle(np.array([0.5,0.5]))
     far_point =Particle(np.array([0.1,0.99]))
 
     #operate on data
     tree_builder(root,A,0)
-    # neighbour_search_periodic(pq=pq,root=root,particles=A,r=middle_point.r,period=np.array([1.0,1.0]))
+    neighbour_search_periodic(pq=pq,root=root,particles=A,r=middle_point.r,period=np.array([1.0,1.0]))
     neighbour_search_periodic(pq2,root,A,far_point.r,np.array([1.0,1.0]))
     
     #plotting
     fig, ax = plt.subplots()
     plot_particles(ax,A=A)
     recursive_tree_plotter(ax,root=root)
-    # queue_plotter(pq, middle_point, np.array([1.0,1.0]), ax)
-    queue_plotter(pq2, far_point, np.array([1.0,1.0]), ax, color='green')
+    queue_plotter(pq, middle_point, np.array([1.0,1.0]), ax)
+    queue_plotter(pq2, far_point, np.array([1.0,1.0]), ax, color='cyan')
     ax.set_aspect('equal', 'box')
     ax.set_ylim(0,1)
     ax.set_xlim(0,1)
