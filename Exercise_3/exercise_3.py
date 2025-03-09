@@ -182,7 +182,7 @@ def density_calc(particles, root:Cell, neigh: int ,N:int, kernel)->tuple:
 
     for particle in particles:
         prio_Queue = prioq(neigh)
-        neighbour_search_periodic(pq=prio_Queue,root=root,particles=A,r=particle.r,period=period)
+        neighbour_search_periodic(pq=prio_Queue,root=root,particles=particles,r=particle.r,period=period)
         h = np.sqrt(-prio_Queue.key())
         rho_i = 0
         for j in range(neigh):
