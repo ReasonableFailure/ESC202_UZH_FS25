@@ -1,6 +1,7 @@
 from matplotlib import pyplot as plt
 import numpy as np
-from Exercise_2 import exercise_2 as ex2
+from heapq import *
+# from Exercise_2 import exercise_2 as ex2
 
 class Particle:
     def __init__(self, r: np.ndarray, mass: float):
@@ -116,7 +117,7 @@ def isLeaf(cell:Cell):
     else:
         return False
 
-def neighbour_search(pq:prioq, root:Cell, particles:Particle, r, rOffset): #this is ball_walk
+def neighbour_search(pq:prioq, root:Cell, particles, r, rOffset): #this is ball_walk
     cnt = 0
     # print(f"\n\n\nStart new iteration. cnt = {cnt}")
     if not root:
@@ -172,16 +173,16 @@ def monaghan_kernel(r:float, h:float) -> float:
     else:
         return 0.0
 
-def density_calc(particles: np.array[Particle], root:ex2.Cell, neigh: int ,N:int, kernel:function)->tuple:
+def density_calc(particles, root:Cell, neigh: int ,N:int, kernel)->tuple:
     densities = []
     x = []
     y = []
-    tree = ex2.tree_builder(root=root,A=particles,dim=0)
+    tree = tree_builder(root=root,A=particles,dim=0)
     period = np.array([1.0,1.0])
 
     for particle in particles:
-        prio_Queue = ex2.prioq(neigh)
-        ex2.neighbour_search_periodic(pq=prio_Queue,root=root,particles=particle,r=particle.r,period=period)
+        prio_Queue = prioq(neigh)
+        neighbour_search_periodic(pq=prio_Queue,root=root,particles=A,r=particle.r,period=period)
         h = np.sqrt(-prio_Queue.key())
         rho_i = 0
         for j in range(neigh):
@@ -199,20 +200,23 @@ def density_calc(particles: np.array[Particle], root:ex2.Cell, neigh: int ,N:int
 if __name__ == "__main__":
     print("hello.")
     # prep data
-    No_of_part = 1_000_000
-    neighbours = 32
+    No_of_part = 10_000
+    neighbours = 300
     A: np.ndarray = np.array([])
     for _ in range(No_of_part):
         p = Particle(r = np.random.rand(2), mass=1.0)
         A = np.append(A, np.array(p))
-    root = ex2.Cell(rLow=np.array([0.0, 0.0]),rHigh=np.array([1.0, 1.0]),name="root",lo=0,hi=len(A) - 1)
+    root = Cell(rLow=np.array([0.0, 0.0]),rHigh=np.array([1.0, 1.0]),name="root",lo=0,hi=len(A) - 1)
+    print("Calculating densities has started (get a refreshment while we wait)")
     x_th,y_th,densities_th = density_calc(particles=A,root=root,neigh=neighbours,N=No_of_part,kernel=tophat_kernel)
     x_m,y_m,densities_m = density_calc(particles=A,root=root,neigh=neighbours,N=No_of_part,kernel=monaghan_kernel)
-    fig,ax = plt.subplots(nrows=2,ncols=1)
-    ax[0,0].scatter(x=x_th,y=y_th,s=4,c=densities_th,cmap="plasma")
-    ax[1,0].scatter(x=x_m,y=y_m,s=4,c=densities_m,cmap="plasma")
-    ax[0,0].set_title("Top Hat Kernel")
-    ax[1,0].set_title("Monaghan Kernel")
+    print("We're plotting!")
+    fig,ax = plt.subplots(nrows=1,ncols=2)
+    ax[0].scatter(x=x_th,y=y_th,s=40,c=densities_th,cmap="plasma")
+    ax[1].scatter(x=x_m,y=y_m,s=40,c=densities_m,cmap="plasma")
+    ax[0].set_title("Top Hat Kernel")
+    ax[1].set_title("Monaghan Kernel") 
+    plt.savefig(f"Density-for-{No_of_part}-2-Kernels.png")   
     plt.show()
     
     #

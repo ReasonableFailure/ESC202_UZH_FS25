@@ -117,7 +117,7 @@ def isLeaf(cell:Cell):
     else:
         return False
 
-def neighbour_search(pq:prioq, root:Cell, particles:Particle, r, rOffset): #this is ball_walk
+def neighbour_search(pq:prioq, root:Cell, particles, r, rOffset): #this is ball_walk
     cnt = 0
     # print(f"\n\n\nStart new iteration. cnt = {cnt}")
     if not root:
