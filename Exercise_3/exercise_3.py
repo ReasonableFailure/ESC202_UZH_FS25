@@ -198,7 +198,7 @@ def density_calc(particles, root:Cell, neigh: int ,N:int, kernel)->tuple:
 
 
 if __name__ == "__main__":
-    print("hello.")
+    # print("hello.")
     # prep data
     No_of_part = 10_000
     neighbours = 300
@@ -207,13 +207,13 @@ if __name__ == "__main__":
         p = Particle(r = np.random.rand(2), mass=1.0)
         A = np.append(A, np.array(p))
     root = Cell(rLow=np.array([0.0, 0.0]),rHigh=np.array([1.0, 1.0]),name="root",lo=0,hi=len(A) - 1)
-    print("Calculating densities has started (get a refreshment while we wait)")
+    # print("Calculating densities has started (get a refreshment while we wait)")
     x_th,y_th,densities_th = density_calc(particles=A,root=root,neigh=neighbours,N=No_of_part,kernel=tophat_kernel)
     x_m,y_m,densities_m = density_calc(particles=A,root=root,neigh=neighbours,N=No_of_part,kernel=monaghan_kernel)
-    print("We're plotting!")
+    # print("We're plotting!")
     fig,ax = plt.subplots(nrows=1,ncols=2)
-    ax[0].scatter(x=x_th,y=y_th,s=40,c=densities_th,cmap="plasma")
-    ax[1].scatter(x=x_m,y=y_m,s=40,c=densities_m,cmap="plasma")
+    ax[0].scatter(x=x_th,y=y_th,s=10,c=densities_th,cmap="plasma")
+    ax[1].scatter(x=x_m,y=y_m,s=10,c=densities_m,cmap="plasma")
     ax[0].set_title("Top Hat Kernel")
     ax[1].set_title("Monaghan Kernel") 
     plt.savefig(f"Density-for-{No_of_part}-2-Kernels.png")   
