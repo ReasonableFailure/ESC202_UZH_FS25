@@ -216,4 +216,6 @@ if __name__ == "__main__":
     ax[1].scatter(x=x_m,y=y_m,s=20,c=densities_m,cmap="plasma")
     ax[0].set_title("Top Hat Kernel")
     ax[1].set_title("Monaghan Kernel") 
+    plt.show()
     plt.savefig(f"Density-for-{No_of_part}-2-Kernels.png")
+    plt.close()
