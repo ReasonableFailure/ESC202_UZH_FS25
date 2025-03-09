@@ -7,15 +7,17 @@ from matplotlib import pyplot as plt
 class Particle:
     def __init__(self, r: np.ndarray):
         self.r = r
-
 class Cell:
-    def  __init__(self,rHigh:np.array,rLow:np.array, lo, hi):
+    def  __init__(self,rHigh:np.array,rLow:np.array, name:str, lo, hi):
         self.leftChild = None 
         self.rightChild = None
         self.upperBound = rHigh
         self.lowerBound = rLow
         self.index_low = lo
         self.index_high = hi
+        self.name = name
+    def __repr__(self):
+        return f"{id(self)}"
 
 # Priority queue
 class prioq:
@@ -82,19 +84,20 @@ def tree_builder(root: Cell, A: np.array, dim: int):
         ll_r = np.array([root.lowerBound[0],v])
         ur_r = root.upperBound
     
-    leftChild = Cell(ur_l,ll_l,root.index_low,pivot_index)
+    leftChild = Cell(ur_l,ll_l,root.name+"l",root.index_low,pivot_index)
     worth_it_left = pivot_index - root.index_low
     # print(f"worth_it_left = {worth_it_left}")
-    if worth_it_left > 8:
-        root.leftChild = leftChild
-        tree_builder(leftChild,A,(1-dim))
     
-    rightChild = Cell(ur_r,ll_r,pivot_index+1,root.index_high)
+    
+    rightChild = Cell(ur_r,ll_r,root.name+"r",pivot_index+1,root.index_high)
     worth_it_right = root.index_high - pivot_index -1
     # print(f"worth_it_right = {worth_it_right}")
-    if worth_it_right > 6:
+    if root.index_high-root.index_low > 8:
+        root.leftChild = leftChild
         root.rightChild = rightChild
+        tree_builder(leftChild,A,(1-dim))
         tree_builder(rightChild,A,(1-dim))
+    return root
 
 def celldist2(self, r):
     """Calculates the squared minimum distance between a particle
@@ -117,16 +120,22 @@ def isLeaf(cell:Cell):
 
 def neighbour_search(pq:prioq, root:Cell, particles:Particle, r, rOffset): #this is ball_walk
     cnt = 0
+    # print(f"\n\n\nStart new iteration. cnt = {cnt}")
     if not root:
         return 0
     if isLeaf(root):
-        for part in particles[root.index_low:root.index_high+1]:
-            delta = part.r + rOffset - r
-            distance = - delta.dot(delta)
+        for i in range(root.index_low,root.index_high+1):
+            part = particles[i]
+            delta = ( part.r + rOffset) - r
+
+            distance = -delta.dot(delta) # minus necessary because of min heap.
+            # print(f"Particle[{i}] at {part.r} with offset {rOffset}.\nCentre is {r}\nDelta = {delta}, Distance = {distance}")
             if distance > pq.key():
+                # print(f"Before: {[(l[0],l[2]) for l in pq.heap]}\n")
                 formerly = pq.replace(distance,part,delta)
+                # print(f"After: {[(l[0],l[2]) for l in pq.heap]}\n")
                 cnt += 1
-    else:
+    else:  
         if root.leftChild:
             if -celldist2(root.rightChild,r-rOffset)>pq.key():
                 c = neighbour_search(pq=pq,root=root.rightChild,particles=particles,r=r,rOffset=rOffset)
@@ -157,39 +166,46 @@ def queue_plotter(pq:prioq, r, period, axis, color = 'red'):
 def plot_particles(fig,A:np.ndarray[Particle]):
     fig.scatter([p.r[0] for p in A], [p.r[1] for p in A], color="black", s=4)
 
-def recursive_tree_plotter(fig,root: Cell):
-    
+def recursive_tree_plotter(axis:plt.axis,root: Cell):
+    if(not root.leftChild or not root.rightChild):
+        xl = root.lowerBound[0]
+        yl = root.lowerBound[1]
+        xh = root.upperBound[0]
+        yh = root.upperBound[1]
+        axis.plot([xl, xh], [yl, yl], color="red")
+        axis.plot([xl, xh], [yh, yh], color="red")
+        axis.plot([xl, xl], [yl, yh], color="red")
+        axis.plot([xh, xh], [yl, yh], color="red")
+        return
     if(root.rightChild):
-        recursive_tree_plotter(fig, root=root.rightChild)
+        recursive_tree_plotter(axis = axis,root=root.rightChild)
     if(root.leftChild):
-        recursive_tree_plotter(fig,root=root.leftChild)
-    xl = root.lowerBound[0]
-    yl = root.lowerBound[1]
-    xh = root.upperBound[0]
-    yh = root.upperBound[1]
-    fig.plot([xl, xh], [yl, yl], color="red")
-    fig.plot([xl, xh], [yh, yh], color="red")
-    fig.plot([xl, xl], [yl, yh], color="red")
-    fig.plot([xh, xh], [yl, yh], color="red")
+        recursive_tree_plotter(axis=axis,root=root.leftChild)
+    return
     
 
 if __name__ == "__main__":
+    #initialise data
     A: np.ndarray = np.array([])
-    for _ in range(1000):
+    for _ in range(100):
         p =Particle(np.random.rand(2))
         A = np.append(A, np.array(p))
-    root =Cell(rLow=np.array([0.0, 0.0]),rHigh=np.array([1.0, 1.0]),lo=0,hi=len(A) - 1)
-    tree_builder(root,A,0)
-    pq = prioq(32)
+    root = Cell(rLow=np.array([0.0, 0.0]),rHigh=np.array([1.0, 1.0]),name="root",lo=0,hi=len(A) - 1)
+    # pq = prioq(13)
+    pq2 = prioq(13)
     middle_point = Particle(np.array([0.5,0.5]))
-    neighbour_search_periodic(pq=pq,root=root,particles=A,r=np.array([0.5,0.5]),period=np.array([1.0,1.0]))
-    pq2 = prioq(32)
-    far_point =Particle(np.array([0.8,0.9]))
-    neighbour_search_periodic(pq2,root,A,np.array([0.8,0.9]),np.array([1.0,1.0]))
+    far_point =Particle(np.array([0.1,0.99]))
+
+    #operate on data
+    tree_builder(root,A,0)
+    # neighbour_search_periodic(pq=pq,root=root,particles=A,r=middle_point.r,period=np.array([1.0,1.0]))
+    neighbour_search_periodic(pq2,root,A,far_point.r,np.array([1.0,1.0]))
+    
+    #plotting
     fig, ax = plt.subplots()
     plot_particles(ax,A=A)
     recursive_tree_plotter(ax,root=root)
-    queue_plotter(pq, middle_point, np.array([1.0,1.0]), ax)
+    # queue_plotter(pq, middle_point, np.array([1.0,1.0]), ax)
     queue_plotter(pq2, far_point, np.array([1.0,1.0]), ax, color='green')
     ax.set_aspect('equal', 'box')
     ax.set_ylim(0,1)
