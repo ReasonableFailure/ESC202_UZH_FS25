@@ -200,8 +200,8 @@ def density_calc(particles, root:Cell, neigh: int ,N:int, kernel)->tuple:
 if __name__ == "__main__":
     # print("hello.")
     # prep data
-    No_of_part = 4_000
-    neighbours = 32
+    No_of_part = int(input("Number of points"))
+    neighbours = int(input("neigbourhood points"))
     A: np.ndarray = np.array([])
     for _ in range(No_of_part):
         p = Particle(r = np.random.rand(2), mass=1.0)
