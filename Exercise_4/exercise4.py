@@ -1,12 +1,15 @@
 from matplotlib import pyplot as plt
 import numpy as np
 from heapq import *
-# from Exercise_2 import exercise_2 as ex2
 
 class Particle:
-    def __init__(self, r: np.ndarray, mass: float):
+    def __init__(self, r: np.ndarray, mass: float, vel: np.ndarray, c:float, U:float):
         self.r = r
         self.m = mass
+        self.velocity = vel
+        self.soundspeed = c
+        self.internal_energy = U
+        self.h = None
 
 class Cell:
     def  __init__(self,rHigh:np.array,rLow:np.array, name:str, lo, hi):
@@ -196,26 +199,4 @@ def density_calc(particles, root:Cell, neigh: int ,N:int, kernel)->tuple:
         y.append(particle.r[1])
     return (x,y,densities)
 
-
 if __name__ == "__main__":
-    # print("hello.")
-    # prep data
-    No_of_part = int(input("Number of points\n"))
-    neighbours = int(input("neigbourhood points\n"))
-    A: np.ndarray = np.array([])
-    for _ in range(No_of_part):
-        p = Particle(r = np.random.rand(2), mass=1.0)
-        A = np.append(A, np.array(p))
-    root = Cell(rLow=np.array([0.0, 0.0]),rHigh=np.array([1.0, 1.0]),name="root",lo=0,hi=len(A) - 1)
-    # print("Calculating densities has started (get a refreshment while we wait)")
-    x_th,y_th,densities_th = density_calc(particles=A,root=root,neigh=neighbours,N=No_of_part,kernel=tophat_kernel)
-    x_m,y_m,densities_m = density_calc(particles=A,root=root,neigh=neighbours,N=No_of_part,kernel=monaghan_kernel)
-    # print("We're plotting!")
-    fig,ax = plt.subplots(nrows=1,ncols=2)
-    ax[0].scatter(x=x_th,y=y_th,s=20,c=densities_th,cmap="plasma")
-    ax[1].scatter(x=x_m,y=y_m,s=20,c=densities_m,cmap="plasma")
-    ax[0].set_title("Top Hat Kernel")
-    ax[1].set_title("Monaghan Kernel") 
-    plt.show()
-    fig.savefig(f"Density-for-{No_of_part}-2-Kernels.png")
-    plt.close()
