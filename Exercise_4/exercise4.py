@@ -7,8 +7,12 @@ class Particle:
         self.r = r
         self.m = mass
         self.velocity = vel
+        self.velocity_pred = None
+        self.U_pred = None
         self.soundspeed = c
         self.internal_energy = U
+        self.a = None
+        self.U_dot = None
         self.h = None
 
 class Cell:
@@ -187,6 +191,7 @@ def density_calc(particles, root:Cell, neigh: int ,N:int, kernel)->tuple:
         prio_Queue = prioq(neigh)
         neighbour_search_periodic(pq=prio_Queue,root=root,particles=particles,r=particle.r,period=period)
         h = np.sqrt(-prio_Queue.key())
+        particle.h = h
         rho_i = 0
         for j in range(neigh):
             particle_j = prio_Queue.heap[j]
@@ -199,4 +204,34 @@ def density_calc(particles, root:Cell, neigh: int ,N:int, kernel)->tuple:
         y.append(particle.r[1])
     return (x,y,densities)
 
+def symmetrify_kernel(kernel:function, r:float, h_i:float, h_j:float):
+    return 0.5*(kernel(r,h_i)+kernel(r,h_j))
+
+def drift_one(patricle_i:Particle, delta_t:float):
+    """This function is poentially dangerous because it only works via side effects"""
+    patricle_i.r += patricle_i.velocity*delta_t
+    patricle_i.velocity_pred = patricle_i.velocity + patricle_i.a * delta_t
+    patricle_i.U_pred = patricle_i.internal_energy + patricle_i.U_dot * delta_t
+
+def drift_two(patricle_i:Particle, delta_t:float):
+    patricle_i.r += patricle_i.velocity*delta_t
+
+def kick(patricle_i:Particle, delta_t:float):
+    patricle_i.velocity += patricle_i.a*delta_t
+    patricle_i.internal_energy += patricle_i.U_dot*delta_t
+
+def calc_forces(patricle_i:Particle, particle_j:Particle):
+    pass
+
+def calc_soundspeed(gamma, particle:Particle):
+    particle.soundspeed = np.sqrt(gamma * (gamma - 1) * particle.internal_energy)
+
+def neighbour_forces(patricle_i:Particle, particle_j:Particle):
+    """Calculates a and udot."""
+    pass
+
+
+
 if __name__ == "__main__":
+    repetition = int(input("How many iterations?\n"))
+
