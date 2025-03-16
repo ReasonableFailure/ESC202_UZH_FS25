@@ -1,19 +1,22 @@
 from matplotlib import pyplot as plt
 import numpy as np
+import matplotlib.animation as animation
 from heapq import *
 
 class Particle:
-    def __init__(self, r: np.ndarray, mass: float, vel: np.ndarray, c:float, U:float):
-        self.r = r
+    def __init__(self, r: np.ndarray, mass: float, vel: np.ndarray, U:float):
         self.m = mass
+        self.r = r
         self.velocity = vel
-        self.velocity_pred = None
-        self.U_pred = None
-        self.soundspeed = c
         self.internal_energy = U
         self.a = None
-        self.U_dot = None
+        self.density = None
         self.h = None
+        self.velocity_pred = None
+        # self.pressure = None # might not be necessary, but nice for visualisation, eventually.
+        self.soundspeed = None
+        self.U_dot = None
+        self.U_pred = None
 
 class Cell:
     def  __init__(self,rHigh:np.array,rLow:np.array, name:str, lo, hi):
@@ -195,9 +198,8 @@ def derivative_monaghan(r:float,h:float) -> float:
         result = 0.0
     return result
 
-
-
-def density_calc(particles, root:Cell, neigh: int ,N:int, kernel)->tuple:
+#deprecated. will remain for reference and visualisation
+"""def density_calc(particles, root:Cell, neigh: int ,N:int, kernel)->tuple:
     densities = []
     x = []
     y = []
@@ -216,39 +218,125 @@ def density_calc(particles, root:Cell, neigh: int ,N:int, kernel)->tuple:
             r_i_r_j = np.sqrt(-particle_j[0])
             rho_j = mass_j * kernel(r_i_r_j,h)
             rho_i += rho_j
+        #particle.density = rho_i
         densities.append(rho_i)
         x.append(particle.r[0])
         y.append(particle.r[1])
-    return (x,y,densities)
+    return (x,y,densities)"""
 
 def symmetrify_kernel(kernel:function, r:float, h_i:float, h_j:float):
-    return 0.5*(kernel(r,h_i)+kernel(r,h_j))
+    return 0.5*(kernel(r=r,h=h_i)+kernel(r=r,h=h_j))
 
-def drift_one(patricle_i:Particle, delta_t:float):
-    """This function is poentially dangerous because it only works via side effects"""
-    patricle_i.r += patricle_i.velocity*delta_t
-    patricle_i.velocity_pred = patricle_i.velocity + patricle_i.a * delta_t
-    patricle_i.U_pred = patricle_i.internal_energy + patricle_i.U_dot * delta_t
+def drift_one(particles:np.array, delta_t:float):
+    """This function is potentially dangerous because it only works via side effects. Drift step one, calculates predicted speed and internal energy"""
+    for particle_i in particles:
+        particle_i.r += particle_i.velocity*delta_t
+        particle_i.velocity_pred = particle_i.velocity + particle_i.a * delta_t
+        particle_i.U_pred = particle_i.internal_energy + particle_i.U_dot * delta_t
 
-def drift_two(patricle_i:Particle, delta_t:float):
-    patricle_i.r += patricle_i.velocity*delta_t
+def drift_two(particles:np.array, delta_t:float):
+    """This function is potentially dangerous because it only works via side effects. Drift step two. Updates position"""
+    for particle_i in particles:
+        particle_i.r += particle_i.velocity*delta_t
 
-def kick(patricle_i:Particle, delta_t:float):
-    patricle_i.velocity += patricle_i.a*delta_t
-    patricle_i.internal_energy += patricle_i.U_dot*delta_t
+def kick(particles:np.array, delta_t:float):
+    """This function is potentially dangerous because it only works via side effects. Updates acceleration and U dot."""
+    for particle_i in particles:
+        particle_i.velocity += particle_i.a*delta_t
+        particle_i.internal_energy += particle_i.U_dot*delta_t
 
-def calc_forces(patricle_i:Particle, particle_j:Particle):
-    pass
+def calc_pressure_term(gamma:float, particle_i:Particle): 
+    #particle_i.pressure = (gamma-1)*particle_i.density*particle_i.internal_energy
+    return (particle_i.soundspeed)**2 / (gamma*particle_i.density)
 
-def calc_soundspeed(gamma, particle:Particle):
+def calc_soundspeed(gamma:float, particle:Particle):
+    """This function is potentially dangerous because it only works via side effects. Calculate sound speed given parameter gamma about gas"""
     particle.soundspeed = np.sqrt(gamma * (gamma - 1) * particle.U_pred)
 
-def neighbour_forces(patricle_i:Particle, particle_j:Particle):
-    """Calculates a and udot."""
-    pass
+def calc_viscosity_term(particle_i:Particle, particle_j:Particle) -> float:
+    nu = 1e-6 #correction factor. prevents division by 0. Could be machine epsilon.
+    c_ij = 0.5 * (particle_i.soundspeed + particle_j.soundspeed)
+    rho_ij = 0.5 * (particle_i.density + particle_j.density)
+    h_ij = 0.5 * (particle_i.h + particle_j.h)
+    v_ij = particle_i.velocity - particle_j.velocity
+    r_ij = particle_j.r - particle_i.r
+    abs_r_ij = np.norm(r_ij)
+    mu_ij = h_ij * (np.dot(v_ij,r_ij)) / (abs_r_ij + nu**2)
+
+    alpha = 1 #from lecturer's notes. this constant influences how the fluid behaves, so will have to be filled with experimentally measured parameters. could also be 0.5
+    beta = 2*alpha
+
+    if np.dot(v_ij,r_ij) > 0: #convergence
+        return (beta*mu_ij**2 - alpha*c_ij*mu_ij)/rho_ij
+    else:
+        return 0
+
+def neighbour_forces_i(patricle_i:Particle, prio_Queue:prioq, neigh:int, gamma:float):
+    for j in range(neigh):
+        particle_j = prio_Queue.heap[j]
+        Dvi_over_Dt(particle_i=patricle_i,particle_j=particle_j,gamma=gamma)
+        Du_over_Dt(particle_i=patricle_i,particle_j=particle_j,gamma=gamma)
+
+def Dvi_over_Dt(particle_i:Particle, particle_j:Particle, gamma:float):
+    #auxiliary computation
+    r_ij = particle_j.r - particle_i.r
+    #formula from lecturer's notes i.e. loop body. separated out for clarity, may be reincorporated for less space intensive code.
+    particle_i.a -=particle_j.m*(calc_pressure_term(gamma=gamma,particle_i=particle_i) + calc_pressure_term(gamma=gamma,particle_i=particle_j) + calc_viscosity_term(particle_i=particle_i,particle_j=particle_j))*symmetrify_kernel(kernel=derivative_monaghan,r=r_ij,h_i=particle_i.h,h_j=particle_j.h)
+
+def Du_over_Dt(particle_i:Particle, particle_j:Particle, gamma:float):
+    #auxiliary computation
+    r_ij = particle_j.r-particle_i.r
+    v_ij = particle_i.velocity - particle_j.velocity
+    #formula from lecturer's notes i.e. loop body. separated out for clarity, may be reincorporated for less space intensive code.
+    particle_i.U_dot += calc_pressure_term(gamma,particle_i)*particle_j.m*v_ij*symmetrify_kernel(derivative_monaghan,r_ij,particle_i.h,particle_j.h) + 0.5*particle_j.m*calc_viscosity_term(particle_i,particle_j)*v_ij*symmetrify_kernel(kernel=derivative_monaghan,r=r_ij,h_i=particle_i.h,h_j=particle_j.h)
+
+def calc_density_i(particle_i :Particle, neigh:int, prio_Queue:prioq, particles:np.array, kernel:function) ->None:
+    particle_i.h = np.sqrt(-prio_Queue.key())
+    particle_i.density = 0
+    for j in range(neigh):
+        particle_j = prio_Queue.heap[j]
+        mass_j = particle_j[1].m
+        r_i_r_j = np.sqrt(-particle_j[0])
+        rho_j = mass_j * kernel(r=r_i_r_j,h=particle_i.h)
+        particle_i.density += rho_j
+
+def calc_forces(particles:np.array[Particle],neigh:int) -> None:
+    # for periodic boundary conditions
+    gamma = 5/3 #this holds for any gas with degree of freedom f = 3. gamma = (f+2)/f. Number taken from lecturer's notes
+    period = np.array([1.0,1.0])
+    root = Cell(rLow=np.array([0.0, 0.0]),rHigh=np.array([1.0, 1.0]),name="root",lo=0,hi=len(particles) - 1)
+    root = tree_builder(root=root,A=particles,dim=0)
+    prio_Queue = prioq(neigh)
+    for particle in particles:
+        neighbour_search_periodic(pq=prio_Queue,root=root,particles=particles,r=particle.r,period=period)
+        calc_density_i(particle_i=particle,neigh=neigh,root=root,period=period,particles=particles,kernel=monaghan_kernel)
+        calc_soundspeed(particle=particle,gamma=gamma)
+        neighbour_forces_i(patricle_i=particle,prio_Queue=prio_Queue,neigh=neigh,gamma=gamma)
+    
+
+def sph(iterations : int, delta_t : float,part_num:int,neigh:int) -> None:
+    #init section
+    #populate particles    
+    A: np.ndarray = np.array([])
+    for _ in range(No_of_part):
+        p = Particle(r=np.random.rand(2),mass=1.0,vel=np.ndarray([0,0]),U=10.0)
+        A = np.append(A, np.array(p)) 
+    #initialise upred, vpred, density, acceleration,...   
+    drift_one(particles=A,delta_t=0)
+    calc_forces(particles=A)
+    for step in range(iterations):
+        drift_one(particles=A,delta_t=0.5*delta_t)
+        calc_forces(particles=A)
+        kick(particles=A,delta_t=delta_t)
+        drift_two(particles=A,delta_t=0.5*delta_t)
+
 
 
 
 if __name__ == "__main__":
+    delta_t = 0.0003 # from exercise description
+    neighbours = int(input("neigbourhood points\n"))
+    No_of_part = int(input("Number of points\n"))
     repetition = int(input("How many iterations?\n"))
+    sph(iterations=repetition,delta_t=delta_t,part_num=No_of_part,neigh=neighbours)
 
