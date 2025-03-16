@@ -161,9 +161,10 @@ def neighbour_search_periodic(pq, root, particles, r, period):
 
 # Density calculation:
 # rho_particle[i] = sum over all N neighbours of their mass times the kernel (dependent on distance and on radius of neighbourhood.)
-def tophat_kernel(r:float,h:float) -> float:
-    """returns the 2D - tophat kernel based on 2 particles. r is position of point, r-particle_j is jth neighbour, h is radius of neighbourhood ball"""
-    return 1/(np.pi * h**2)
+
+# def tophat_kernel(r:float,h:float) -> float:
+#     """returns the 2D - tophat kernel based on 2 particles. r is position of point, r-particle_j is jth neighbour, h is radius of neighbourhood ball"""
+#     return 1/(np.pi * h**2)
 
 def monaghan_kernel(r:float, h:float) -> float:
     """
@@ -173,12 +174,28 @@ def monaghan_kernel(r:float, h:float) -> float:
     sigma = 40/(7 * np.pi)
     r_over_h = r/h
 
-    if r >= 0 and r_over_h <= 0.5:
+    if r >= 0 and r_over_h < 0.5:
         return (sigma/h**2) * (1+6*(r_over_h**3 - r_over_h**2))
     elif r_over_h >= 0.5 and r_over_h <=1:
         return (sigma/h**2) * (2*(1 - r_over_h)**3)
     else:
         return 0.0
+    
+def derivative_monaghan(r:float,h:float) -> float:
+    sigma = 40/(7 * np.pi)
+    r_over_h = r/h
+
+    result = 6*sigma / (h**3)
+
+    if r >= 0  and r_over_h < 0.5:
+        result * (3*r-r_over_h**2 - 2*r_over_h)
+    elif r_over_h >= 0.5 and r_over_h <=1:
+        result * (-1)*((1-r_over_h)**2)
+    else:
+        result = 0.0
+    return result
+
+
 
 def density_calc(particles, root:Cell, neigh: int ,N:int, kernel)->tuple:
     densities = []
@@ -224,7 +241,7 @@ def calc_forces(patricle_i:Particle, particle_j:Particle):
     pass
 
 def calc_soundspeed(gamma, particle:Particle):
-    particle.soundspeed = np.sqrt(gamma * (gamma - 1) * particle.internal_energy)
+    particle.soundspeed = np.sqrt(gamma * (gamma - 1) * particle.U_pred)
 
 def neighbour_forces(patricle_i:Particle, particle_j:Particle):
     """Calculates a and udot."""
