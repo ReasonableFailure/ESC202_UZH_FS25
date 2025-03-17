@@ -9,14 +9,17 @@ class Particle:
         self.r = r
         self.velocity = vel
         self.internal_energy = U
-        self.a = None
-        self.density = None
-        self.h = None
-        self.velocity_pred = None
+        self.a = np.array([0.0,0.0])
+        self.density = np.nan
+        self.h = np.nan
+        self.velocity_pred = np.array([0.0,0.0])
         # self.pressure = None # might not be necessary, but nice for visualisation, eventually.
-        self.soundspeed = None
-        self.U_dot = None
-        self.U_pred = None
+        self.soundspeed = np.nan
+        self.U_dot = np.nan
+        self.U_pred = np.nan
+        #lt operator
+        def __lt__(self, other:Particle):
+            np.sum(self.r**2) < np.sum(other.r**2)
 
 class Cell:
     def  __init__(self,rHigh:np.array,rLow:np.array, name:str, lo, hi):
@@ -130,6 +133,7 @@ def isLeaf(cell:Cell):
 def neighbour_search(pq:prioq, root:Cell, particles, r, rOffset): #this is ball_walk
     cnt = 0
     # print(f"\n\n\nStart new iteration. cnt = {cnt}")
+    # print(type(particles))
     if not root:
         return 0
     if isLeaf(root):
@@ -137,8 +141,10 @@ def neighbour_search(pq:prioq, root:Cell, particles, r, rOffset): #this is ball_
             part = particles[i]
             delta = ( part.r + rOffset) - r
 
-            distance = -delta.dot(delta) # minus necessary because of min heap.
+            distance = -delta.dot(delta) - 1e-8 # minus necessary because of min heap.
             # print(f"Particle[{i}] at {part.r} with offset {rOffset}.\nCentre is {r}\nDelta = {delta}, Distance = {distance}")
+            # print(type(distance))
+            #if the distance here is exactly -0.0 it triggers the prioq library function to compare the 2nd element as the key. fix ?
             if distance > pq.key():
                 # print(f"Before: {[(l[0],l[2]) for l in pq.heap]}\n")
                 formerly = pq.replace(distance,part,delta)
@@ -224,7 +230,7 @@ def derivative_monaghan(r:float,h:float) -> float:
         y.append(particle.r[1])
     return (x,y,densities)"""
 
-def symmetrify_kernel(kernel:function, r:float, h_i:float, h_j:float):
+def symmetrify_kernel(kernel, r:float, h_i:float, h_j:float):
     return 0.5*(kernel(r=r,h=h_i)+kernel(r=r,h=h_j))
 
 def drift_one(particles:np.array, delta_t:float):
@@ -260,7 +266,7 @@ def calc_viscosity_term(particle_i:Particle, particle_j:Particle) -> float:
     h_ij = 0.5 * (particle_i.h + particle_j.h)
     v_ij = particle_i.velocity - particle_j.velocity
     r_ij = particle_j.r - particle_i.r
-    abs_r_ij = np.norm(r_ij)
+    abs_r_ij = np.linalg.norm(r_ij)
     mu_ij = h_ij * (np.dot(v_ij,r_ij)) / (abs_r_ij + nu**2)
 
     alpha = 1 #from lecturer's notes. this constant influences how the fluid behaves, so will have to be filled with experimentally measured parameters. could also be 0.5
@@ -273,24 +279,24 @@ def calc_viscosity_term(particle_i:Particle, particle_j:Particle) -> float:
 
 def neighbour_forces_i(patricle_i:Particle, prio_Queue:prioq, neigh:int, gamma:float):
     for j in range(neigh):
-        particle_j = prio_Queue.heap[j]
+        dist, particle_j, dr = prio_Queue.heap[j]
         Dvi_over_Dt(particle_i=patricle_i,particle_j=particle_j,gamma=gamma)
         Du_over_Dt(particle_i=patricle_i,particle_j=particle_j,gamma=gamma)
 
 def Dvi_over_Dt(particle_i:Particle, particle_j:Particle, gamma:float):
     #auxiliary computation
-    r_ij = particle_j.r - particle_i.r
+    r_ij = np.linalg.norm(particle_j.r - particle_i.r)
     #formula from lecturer's notes i.e. loop body. separated out for clarity, may be reincorporated for less space intensive code.
-    particle_i.a -=particle_j.m*(calc_pressure_term(gamma=gamma,particle_i=particle_i) + calc_pressure_term(gamma=gamma,particle_i=particle_j) + calc_viscosity_term(particle_i=particle_i,particle_j=particle_j))*symmetrify_kernel(kernel=derivative_monaghan,r=r_ij,h_i=particle_i.h,h_j=particle_j.h)
+    particle_i.a -= particle_j.m*(calc_pressure_term(gamma=gamma,particle_i=particle_i) + calc_pressure_term(gamma=gamma,particle_i=particle_j) + calc_viscosity_term(particle_i=particle_i,particle_j=particle_j))*symmetrify_kernel(kernel=derivative_monaghan,r=r_ij,h_i=particle_i.h,h_j=particle_j.h)
 
 def Du_over_Dt(particle_i:Particle, particle_j:Particle, gamma:float):
     #auxiliary computation
-    r_ij = particle_j.r-particle_i.r
-    v_ij = particle_i.velocity - particle_j.velocity
+    r_ij = np.linalg.norm(particle_j.r-particle_i.r)
+    v_ij = np.linalg.norm(particle_i.velocity - particle_j.velocity)
     #formula from lecturer's notes i.e. loop body. separated out for clarity, may be reincorporated for less space intensive code.
     particle_i.U_dot += calc_pressure_term(gamma,particle_i)*particle_j.m*v_ij*symmetrify_kernel(derivative_monaghan,r_ij,particle_i.h,particle_j.h) + 0.5*particle_j.m*calc_viscosity_term(particle_i,particle_j)*v_ij*symmetrify_kernel(kernel=derivative_monaghan,r=r_ij,h_i=particle_i.h,h_j=particle_j.h)
 
-def calc_density_i(particle_i :Particle, neigh:int, prio_Queue:prioq, particles:np.array, kernel:function) ->None:
+def calc_density_i(particle_i :Particle, neigh:int, prio_Queue:prioq, particles:np.array, kernel) ->None:
     particle_i.h = np.sqrt(-prio_Queue.key())
     particle_i.density = 0
     for j in range(neigh):
@@ -300,7 +306,7 @@ def calc_density_i(particle_i :Particle, neigh:int, prio_Queue:prioq, particles:
         rho_j = mass_j * kernel(r=r_i_r_j,h=particle_i.h)
         particle_i.density += rho_j
 
-def calc_forces(particles:np.array[Particle],neigh:int) -> None:
+def calc_forces(particles:np.array,neigh:int) -> None:
     # for periodic boundary conditions
     gamma = 5/3 #this holds for any gas with degree of freedom f = 3. gamma = (f+2)/f. Number taken from lecturer's notes
     period = np.array([1.0,1.0])
@@ -309,24 +315,24 @@ def calc_forces(particles:np.array[Particle],neigh:int) -> None:
     prio_Queue = prioq(neigh)
     for particle in particles:
         neighbour_search_periodic(pq=prio_Queue,root=root,particles=particles,r=particle.r,period=period)
-        calc_density_i(particle_i=particle,neigh=neigh,root=root,period=period,particles=particles,kernel=monaghan_kernel)
+        calc_density_i(particle_i=particle,neigh=neigh,particles=particles,prio_Queue=prio_Queue,kernel=monaghan_kernel)
         calc_soundspeed(particle=particle,gamma=gamma)
         neighbour_forces_i(patricle_i=particle,prio_Queue=prio_Queue,neigh=neigh,gamma=gamma)
     
 
-def sph(iterations : int, delta_t : float,part_num:int,neigh:int) -> None:
+def sph_leapfrog(iterations : int, delta_t : float,part_num:int,neigh:int) -> None:
     #init section
     #populate particles    
     A: np.ndarray = np.array([])
     for _ in range(No_of_part):
-        p = Particle(r=np.random.rand(2),mass=1.0,vel=np.ndarray([0,0]),U=10.0)
+        p = Particle(r=np.random.rand(2),mass=1.0,vel=np.array([0,0]),U=10.0)
         A = np.append(A, np.array(p)) 
     #initialise upred, vpred, density, acceleration,...   
     drift_one(particles=A,delta_t=0)
-    calc_forces(particles=A)
+    calc_forces(particles=A,neigh=neigh)
     for step in range(iterations):
         drift_one(particles=A,delta_t=0.5*delta_t)
-        calc_forces(particles=A)
+        calc_forces(particles=A,neigh=neigh)
         kick(particles=A,delta_t=delta_t)
         drift_two(particles=A,delta_t=0.5*delta_t)
 
@@ -338,5 +344,5 @@ if __name__ == "__main__":
     neighbours = int(input("neigbourhood points\n"))
     No_of_part = int(input("Number of points\n"))
     repetition = int(input("How many iterations?\n"))
-    sph(iterations=repetition,delta_t=delta_t,part_num=No_of_part,neigh=neighbours)
+    sph_leapfrog(iterations=repetition,delta_t=delta_t,part_num=No_of_part,neigh=neighbours)
 
