@@ -1,25 +1,30 @@
 from matplotlib import pyplot as plt
+from matplotlib import animation as an
 import numpy as np
-import matplotlib.animation as animation
 from heapq import *
+# import matplotlib.animation as animation
 
 class Particle:
-    def __init__(self, r: np.ndarray, mass: float, vel: np.ndarray, U:float):
+    def __init__(self, r: np.ndarray, mass: float, vel: np.ndarray, U:float, id:int):
         self.m = mass
         self.r = r
         self.velocity = vel
         self.internal_energy = U
         self.a = np.array([0.0,0.0])
-        self.density = np.nan
-        self.h = np.nan
+        self.density = 0.0
+        self.h = 0.0
         self.velocity_pred = np.array([0.0,0.0])
         # self.pressure = None # might not be necessary, but nice for visualisation, eventually.
-        self.soundspeed = np.nan
-        self.U_dot = np.nan
-        self.U_pred = np.nan
+        self.name = id
+        self.soundspeed = 0.0
+        self.U_dot = 0.0
+        self.U_pred = 0.0
         #lt operator
-        def __lt__(self, other:Particle):
-            np.sum(self.r**2) < np.sum(other.r**2)
+    def __lt__(self, other):
+        np.sum(self.r**2) < np.sum(other.r**2)
+    def __repr__(self):
+        # return f"{self.name} at r = {self.r}, with v = {self.velocity}, a = {self.a}, soundspeed = {self.soundspeed}\nWeight = {self.m}, Density = {self.density}, Internal Energy = {self.internal_energy}\nNeighbourshood size = {self.h}"
+        return f"{self.name} Density = {self.density}"
 
 class Cell:
     def  __init__(self,rHigh:np.array,rLow:np.array, name:str, lo, hi):
@@ -31,7 +36,7 @@ class Cell:
         self.index_high = hi
         self.name = name
     def __repr__(self):
-        return f"{id(self)}"
+        return f"[{self.index_low},{self.index_high}]"
 
 # Priority queue
 class prioq:
@@ -130,7 +135,7 @@ def isLeaf(cell:Cell):
     else:
         return False
 
-def neighbour_search(pq:prioq, root:Cell, particles, r, rOffset): #this is ball_walk
+def neighbour_search(pq:prioq, root:Cell, particles, r, rOffset, id): #this is ball_walk
     cnt = 0
     # print(f"\n\n\nStart new iteration. cnt = {cnt}")
     # print(type(particles))
@@ -139,8 +144,20 @@ def neighbour_search(pq:prioq, root:Cell, particles, r, rOffset): #this is ball_
     if isLeaf(root):
         for i in range(root.index_low,root.index_high+1):
             part = particles[i]
+            if(part.name == id):
+                # with open("0_density_particles.txt","a") as file:
+                #     file.write(f"Self-interaction {id}\n")
+                #     file.write(f"Location: {r}\n")
+                #     file.write(f"Location of particle: {part.r}\n")
+                #     file.write(f"delta = ( {part.r} + {rOffset}) - {r} = {( part.r + rOffset) - r}\n")
+                continue
             delta = ( part.r + rOffset) - r
-
+            if(delta[0] == 0.0 and delta[1] == 0.0):
+                with open("0_density_particles.txt","a") as file:
+                    file.write(f"0 Density particle {id}\n")
+                    file.write(f"Location: {r}\n")
+                    file.write(f"Location of particle: {part.r}\n")
+                    file.write(f"delta = ( {part.r} + {rOffset}) - {r} = {( part.r + rOffset) - r}\n")
             distance = -delta.dot(delta) - 1e-8 # minus necessary because of min heap.
             # print(f"Particle[{i}] at {part.r} with offset {rOffset}.\nCentre is {r}\nDelta = {delta}, Distance = {distance}")
             # print(type(distance))
@@ -153,20 +170,20 @@ def neighbour_search(pq:prioq, root:Cell, particles, r, rOffset): #this is ball_
     else:  
         if root.rightChild:
             if -celldist2(root.rightChild,r-rOffset) > pq.key():
-                c = neighbour_search(pq=pq,root=root.rightChild,particles=particles,r=r,rOffset=rOffset)
+                c = neighbour_search(pq=pq,root=root.rightChild,particles=particles,r=r,rOffset=rOffset, id=id)
                 cnt += c
         if root.leftChild:
             if -celldist2(root.leftChild,r-rOffset) > pq.key():
-                c = neighbour_search(pq=pq,root=root.leftChild,particles=particles,r=r,rOffset=rOffset)
+                c = neighbour_search(pq=pq,root=root.leftChild,particles=particles,r=r,rOffset=rOffset, id=id)
                 cnt+=c
     return cnt
 
-def neighbour_search_periodic(pq, root, particles, r, period):
+def neighbour_search_periodic(pq, root, particles, r, period, particle_id):
     # walk the closest image first (at offset=[0, 0])
     for y in [0.0, -period[1], period[1]]:
         for x in [0.0, -period[0], period[0]]:
             rOffset = np.array([x, y])
-            neighbour_search(pq, root, particles, r, rOffset)
+            neighbour_search(pq, root, particles, r, rOffset, particle_id)
 
 # Density calculation:
 # rho_particle[i] = sum over all N neighbours of their mass times the kernel (dependent on distance and on radius of neighbourhood.)
@@ -182,13 +199,15 @@ def monaghan_kernel(r:float, h:float) -> float:
     """
     sigma = 40/(7 * np.pi)
     r_over_h = r/h
-
+    result = sigma/h**2
     if r >= 0 and r_over_h < 0.5:
-        return (sigma/h**2) * (1+6*(r_over_h**3 - r_over_h**2))
+        result *= (1+6*(r_over_h**3 - r_over_h**2))
     elif r_over_h >= 0.5 and r_over_h <=1:
-        return (sigma/h**2) * (2*(1 - r_over_h)**3)
+        result *= (2*(1 - r_over_h)**3)
     else:
-        return 0.0
+        result = 0.0
+    # print(result)
+    return result
     
 def derivative_monaghan(r:float,h:float) -> float:
     sigma = 40/(7 * np.pi)
@@ -253,6 +272,7 @@ def kick(particles:np.array, delta_t:float):
 
 def calc_pressure_term(gamma:float, particle_i:Particle): 
     #particle_i.pressure = (gamma-1)*particle_i.density*particle_i.internal_energy
+    # print(particle_i.density)
     return (particle_i.soundspeed)**2 / (gamma*particle_i.density)
 
 def calc_soundspeed(gamma:float, particle:Particle):
@@ -286,25 +306,43 @@ def neighbour_forces_i(patricle_i:Particle, prio_Queue:prioq, neigh:int, gamma:f
 def Dvi_over_Dt(particle_i:Particle, particle_j:Particle, gamma:float):
     #auxiliary computation
     r_ij = np.linalg.norm(particle_j.r - particle_i.r)
+    # print("Calculation of a based on interaction:")
+    # print(f"Particle i = {particle_i}")
+    # print(f"Particle j = {particle_j}")
     #formula from lecturer's notes i.e. loop body. separated out for clarity, may be reincorporated for less space intensive code.
     particle_i.a -= particle_j.m*(calc_pressure_term(gamma=gamma,particle_i=particle_i) + calc_pressure_term(gamma=gamma,particle_i=particle_j) + calc_viscosity_term(particle_i=particle_i,particle_j=particle_j))*symmetrify_kernel(kernel=derivative_monaghan,r=r_ij,h_i=particle_i.h,h_j=particle_j.h)
+    # particle_i.a -= 0.5 * particle_j.m * derivative_monaghan(r=r_ij,h=particle_j.h)* (
+    #     calc_pressure_term(gamma=gamma,particle_i=particle_i)+
+    #     calc_pressure_term(gamma=gamma,particle_i=particle_j)+
+    #     calc_viscosity_term(particle_i=particle_i,particle_j=particle_j))        
+    # particle_j.a -= 0.5 * particle_i.m * derivative_monaghan(r=r_ij,h=particle_i.h) * (
+    #     calc_pressure_term(gamma=gamma,particle_i=particle_i)+
+    #     calc_pressure_term(gamma=gamma,particle_i=particle_j)+
+    #     calc_viscosity_term(particle_i=particle_i,particle_j=particle_j)
+    
 
 def Du_over_Dt(particle_i:Particle, particle_j:Particle, gamma:float):
     #auxiliary computation
     r_ij = np.linalg.norm(particle_j.r-particle_i.r)
     v_ij = np.linalg.norm(particle_i.velocity - particle_j.velocity)
+    # print("Calculation of Udot based on interaction of")
+    # print(f"Particle i = {particle_i}")
+    # print(f"Particle j = {particle_j}")
     #formula from lecturer's notes i.e. loop body. separated out for clarity, may be reincorporated for less space intensive code.
     particle_i.U_dot += calc_pressure_term(gamma,particle_i)*particle_j.m*v_ij*symmetrify_kernel(derivative_monaghan,r_ij,particle_i.h,particle_j.h) + 0.5*particle_j.m*calc_viscosity_term(particle_i,particle_j)*v_ij*symmetrify_kernel(kernel=derivative_monaghan,r=r_ij,h_i=particle_i.h,h_j=particle_j.h)
 
 def calc_density_i(particle_i :Particle, neigh:int, prio_Queue:prioq, particles:np.array, kernel) ->None:
     particle_i.h = np.sqrt(-prio_Queue.key())
-    particle_i.density = 0
+    # print(f"Particle i = {particle_i}")
     for j in range(neigh):
-        particle_j = prio_Queue.heap[j]
-        mass_j = particle_j[1].m
-        r_i_r_j = np.sqrt(-particle_j[0])
+        distance, particle_j, dr = prio_Queue.heap[j]
+        # print(f"Particle j = {particle_j}")
+        mass_j = particle_j.m
+        r_i_r_j = np.sqrt(-distance)
         rho_j = mass_j * kernel(r=r_i_r_j,h=particle_i.h)
         particle_i.density += rho_j
+    # print(f"Particle i = {particle_i}")
+    
 
 def calc_forces(particles:np.array,neigh:int) -> None:
     # for periodic boundary conditions
@@ -314,35 +352,85 @@ def calc_forces(particles:np.array,neigh:int) -> None:
     root = tree_builder(root=root,A=particles,dim=0)
     prio_Queue = prioq(neigh)
     for particle in particles:
-        neighbour_search_periodic(pq=prio_Queue,root=root,particles=particles,r=particle.r,period=period)
+        neighbour_search_periodic(pq=prio_Queue,root=root,particles=particles,r=particle.r,period=period, particle_id = particle.name)
         calc_density_i(particle_i=particle,neigh=neigh,particles=particles,prio_Queue=prio_Queue,kernel=monaghan_kernel)
+        # if(particle.density == 0.0):
+        #     with open("0_density_particles.txt","w") as file:
+        #         file.write(f"{particle}")
+        #         file.write(f"{prio_Queue.heap}")
+        #         file.write("\n\n\n\n\n\n\n\n")                
         calc_soundspeed(particle=particle,gamma=gamma)
+    for particle in particles:
         neighbour_forces_i(patricle_i=particle,prio_Queue=prio_Queue,neigh=neigh,gamma=gamma)
     
-
-def sph_leapfrog(iterations : int, delta_t : float,part_num:int,neigh:int) -> None:
+def sph_init(part_num:int, neigh:int)->np.ndarray:
     #init section
     #populate particles    
     A: np.ndarray = np.array([])
     for _ in range(No_of_part):
-        p = Particle(r=np.random.rand(2),mass=1.0,vel=np.array([0,0]),U=10.0)
+        p = Particle(r=np.random.rand(2),mass=1.0,vel=np.array([0.0,0.0]),U=10.0, id=_)
+        if _ == 225:
+            p.internal_energy = 1000.0
         A = np.append(A, np.array(p)) 
     #initialise upred, vpred, density, acceleration,...   
     drift_one(particles=A,delta_t=0)
     calc_forces(particles=A,neigh=neigh)
-    for step in range(iterations):
-        drift_one(particles=A,delta_t=0.5*delta_t)
-        calc_forces(particles=A,neigh=neigh)
-        kick(particles=A,delta_t=delta_t)
-        drift_two(particles=A,delta_t=0.5*delta_t)
+    return A
+
+def sph_leapfrog( delta_t : float,A:np.array,neigh:int) -> np.ndarray:
+    drift_one(particles=A,delta_t=0.5*delta_t)
+    calc_forces(particles=A,neigh=neigh)
+    kick(particles=A,delta_t=delta_t)
+    drift_two(particles=A,delta_t=0.5*delta_t)
+    return A
+
+
+delta_t = 0.0003
+No_of_part = int(input("Number of points\n"))
+neighbours = int(input("neigbourhood points\n"))
+repetition = int(input("How many iterations?\n"))
+particle_trace = np.ndarray(shape=(No_of_part,repetition+1),dtype=Particle)
+particle_trace[:,0]=np.array(sph_init(part_num=No_of_part,neigh=neighbours))
+fig, axs = plt.subplots(nrows=1,ncols=2)
+artists=[]
+x = []
+y = []
+rho = []
+U = []
+for particle in particle_trace[:,0]:        
+        x.append(particle.r[0])
+        y.append(particle.r[1])
+        rho.append(particle.density)
+        U.append(particle.internal_energy)
+density_plot = axs[0].scatter(x=x,y=y,c=rho,cmap="seismic")
+energy_plot = axs[1].scatter(x=x,y=y,c=U,cmap="plasma")
+axs[0].set(xlim = [0,1],ylim=[0,1],xlabel="Density Plot", title="Iteration 0")
+axs[1].set(xlim = [0,1],ylim=[0,1],xlabel="Internal Energy Plot", title = "Iteration 0")
+density_plot = axs[0].scatter(x=x,y=y,c=rho,cmap="plasma")
+energy_plot = axs[1].scatter(x=x,y=y,c=U,cmap="seismic")
+artists.append([density_plot,energy_plot])
+for rep in range(repetition):
+    particle_trace[:,rep+1] = sph_leapfrog(delta_t=delta_t,A=particle_trace[:,rep],neigh=neighbours) 
+    x = []
+    y= []
+    rho = []
+    U = []   
+    for particle in particle_trace[:,rep+1]:        
+        x.append(particle.r[0])
+        y.append(particle.r[1])
+        rho.append(particle.density)
+        U.append(particle.internal_energy)
+    density_plot = axs[0].scatter(x=x,y=y,c=rho,cmap="plasma")
+    energy_plot = axs[1].scatter(x=x,y=y,c=U,cmap="seismic")
+    artists.append([density_plot,energy_plot])
+
+ani=an.ArtistAnimation(fig=fig,artists=artists,interval=300)
+ani.save(writer="ffmpeg", filename="/home/faye/UZH/6Sem/ESC202/weird-animation-0.mp4")
 
 
 
 
-if __name__ == "__main__":
-    delta_t = 0.0003 # from exercise description
-    neighbours = int(input("neigbourhood points\n"))
-    No_of_part = int(input("Number of points\n"))
-    repetition = int(input("How many iterations?\n"))
-    sph_leapfrog(iterations=repetition,delta_t=delta_t,part_num=No_of_part,neigh=neighbours)
+    
+
+
 
