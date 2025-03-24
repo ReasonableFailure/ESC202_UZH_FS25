@@ -372,18 +372,19 @@ def calc_forces(particles:np.array,neigh:int) -> None:
 def sph_init(part_num:int, neigh:int)->np.ndarray:
     #init section
     #populate particles    
-    A: np.ndarray = np.array([])
+    A = []
     for _ in range(No_of_part):
         p = Particle(r=np.random.rand(2),mass=1.0,vel=np.array([0.0,0.0]),U=10.0, id=_)
         if _ == 225:
             p.internal_energy = 1000.0
-        A = np.append(A, np.array(p)) 
+        A.append(p)
     #initialise upred, vpred, density, acceleration,...   
     drift_one(particles=A,delta_t=0)
     calc_forces(particles=A,neigh=neigh)
     return A
 
 def sph_leapfrog( delta_t : float,A:np.array,neigh:int) -> np.ndarray:
+
     drift_one(particles=A,delta_t=0.5*delta_t)
     calc_forces(particles=A,neigh=neigh)
     kick(particles=A,delta_t=delta_t)
@@ -408,12 +409,13 @@ for particle in particle_trace[:,0]:
         y.append(particle.r[1])
         rho.append(particle.density)
         U.append(particle.internal_energy)
-axs[0].set(xlim = [0,1],ylim=[0,1],xlabel="Density Plot", title="Iteration 0")
-axs[1].set(xlim = [0,1],ylim=[0,1],xlabel="Internal Energy Plot", title = "Iteration 0")
-density_plot = axs[0].scatter(x=x,y=y,c=rho,cmap="plasma")
-energy_plot = axs[1].scatter(x=x,y=y,c=U,cmap="seismic")
+axs[0].set(xlim = [0,1],ylim=[0,1],xlabel="Density Plot")
+axs[1].set(xlim = [0,1],ylim=[0,1],xlabel="Internal Energy Plot")
+density_plot = axs[0].scatter(x=x,y=y,c=rho,cmap="plasma",s=2)
+energy_plot = axs[1].scatter(x=x,y=y,c=U,cmap="seismic",s=2)
 artists.append([density_plot,energy_plot])
 for rep in range(repetition):
+    print(rep)
     particle_trace[:,rep+1] = sph_leapfrog(delta_t=delta_t,A=particle_trace[:,rep],neigh=neighbours) 
     x = []
     y= []
@@ -424,12 +426,12 @@ for rep in range(repetition):
         y.append(particle.r[1])
         rho.append(particle.density)
         U.append(particle.internal_energy)
-    density_plot = axs[0].scatter(x=x,y=y,c=rho,cmap="plasma")
-    energy_plot = axs[1].scatter(x=x,y=y,c=U,cmap="seismic")
+    density_plot = axs[0].scatter(x=x,y=y,c=rho,cmap="plasma",s=2)
+    energy_plot = axs[1].scatter(x=x,y=y,c=U,cmap="seismic",s=2)
     artists.append([density_plot,energy_plot])
 
 ani=an.ArtistAnimation(fig=fig,artists=artists,interval=300)
-ani.save(writer="ffmpeg", filename="/home/faye/UZH/6Sem/ESC202/weird-animation-0.mp4")
+ani.save(writer="ffmpeg", filename="/home/faye/UZH/6Sem/ESC202/animation-ex4.mp4")
 
 
 
