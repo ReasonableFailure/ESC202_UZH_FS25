@@ -408,8 +408,6 @@ for particle in particle_trace[:,0]:
         y.append(particle.r[1])
         rho.append(particle.density)
         U.append(particle.internal_energy)
-density_plot = axs[0].scatter(x=x,y=y,c=rho,cmap="seismic")
-energy_plot = axs[1].scatter(x=x,y=y,c=U,cmap="plasma")
 axs[0].set(xlim = [0,1],ylim=[0,1],xlabel="Density Plot", title="Iteration 0")
 axs[1].set(xlim = [0,1],ylim=[0,1],xlabel="Internal Energy Plot", title = "Iteration 0")
 density_plot = axs[0].scatter(x=x,y=y,c=rho,cmap="plasma")
