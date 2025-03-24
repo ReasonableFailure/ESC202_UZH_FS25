@@ -55,6 +55,11 @@ class prioq:
         # .... define key here
         minimum_node = self.heap[0]
         return minimum_node[0] #Distance in the tuple.
+    def cleanup(self,k: int):
+        self.__init__(k)
+
+
+
 
 def partition(A: np.array,i: int, j:int, v:float,d:bool) -> int :
     if len(A) == 0:
@@ -352,6 +357,7 @@ def calc_forces(particles:np.array,neigh:int) -> None:
     root = tree_builder(root=root,A=particles,dim=0)
     prio_Queue = prioq(neigh)
     for particle in particles:
+        prio_Queue.cleanup(neigh)
         neighbour_search_periodic(pq=prio_Queue,root=root,particles=particles,r=particle.r,period=period, particle_id = particle.name)
         calc_density_i(particle_i=particle,neigh=neigh,particles=particles,prio_Queue=prio_Queue,kernel=monaghan_kernel)
         # if(particle.density == 0.0):
