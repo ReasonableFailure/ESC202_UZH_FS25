@@ -221,9 +221,9 @@ def derivative_monaghan(r:float,h:float) -> float:
     result = 6*sigma / (h**3)
 
     if r >= 0  and r_over_h < 0.5:
-        result * (3*r-r_over_h**2 - 2*r_over_h)
+        result *= (3*r-r_over_h**2 - 2*r_over_h)
     elif r_over_h >= 0.5 and r_over_h <=1:
-        result * (-1)*((1-r_over_h)**2)
+        result *= (-1)*((1-r_over_h)**2)
     else:
         result = 0.0
     return result
@@ -305,17 +305,19 @@ def calc_viscosity_term(particle_i:Particle, particle_j:Particle) -> float:
 def neighbour_forces_i(patricle_i:Particle, prio_Queue:prioq, neigh:int, gamma:float):
     for j in range(neigh):
         dist, particle_j, dr = prio_Queue.heap[j]
-        Dvi_over_Dt(particle_i=patricle_i,particle_j=particle_j,gamma=gamma)
-        Du_over_Dt(particle_i=patricle_i,particle_j=particle_j,gamma=gamma)
+        Dvi_over_Dt(particle_i=patricle_i,particle_j=particle_j,gamma=gamma, r_ij=dr)
+        Du_over_Dt(particle_i=patricle_i,particle_j=particle_j,gamma=gamma,r_ij=dr)
 
-def Dvi_over_Dt(particle_i:Particle, particle_j:Particle, gamma:float):
+def Dvi_over_Dt(particle_i:Particle, particle_j:Particle, gamma:float, r_ij):
     #auxiliary computation
-    r_ij = np.linalg.norm(particle_j.r - particle_i.r)
+    # r_ij = np.linalg.norm(particle_j.r - particle_i.r)
     # print("Calculation of a based on interaction:")
     # print(f"Particle i = {particle_i}")
     # print(f"Particle j = {particle_j}")
     #formula from lecturer's notes i.e. loop body. separated out for clarity, may be reincorporated for less space intensive code.
-    particle_i.a -= particle_j.m*(calc_pressure_term(gamma=gamma,particle_i=particle_i) + calc_pressure_term(gamma=gamma,particle_i=particle_j) + calc_viscosity_term(particle_i=particle_i,particle_j=particle_j))*symmetrify_kernel(kernel=derivative_monaghan,r=r_ij,h_i=particle_i.h,h_j=particle_j.h)
+    
+    particle_i.a -= particle_j.m*(calc_pressure_term(gamma=gamma,particle_i=particle_i) + calc_pressure_term(gamma=gamma,particle_i=particle_j) + calc_viscosity_term(particle_i=particle_i,particle_j=particle_j))*symmetrify_kernel(kernel=derivative_monaghan,r=np.linalg.norm(r_ij),h_i=particle_i.h,h_j=particle_j.h)
+    
     # particle_i.a -= 0.5 * particle_j.m * derivative_monaghan(r=r_ij,h=particle_j.h)* (
     #     calc_pressure_term(gamma=gamma,particle_i=particle_i)+
     #     calc_pressure_term(gamma=gamma,particle_i=particle_j)+
@@ -326,15 +328,15 @@ def Dvi_over_Dt(particle_i:Particle, particle_j:Particle, gamma:float):
     #     calc_viscosity_term(particle_i=particle_i,particle_j=particle_j)
     
 
-def Du_over_Dt(particle_i:Particle, particle_j:Particle, gamma:float):
+def Du_over_Dt(particle_i:Particle, particle_j:Particle, gamma:float, r_ij):
     #auxiliary computation
-    r_ij = np.linalg.norm(particle_j.r-particle_i.r)
+    # r_ij = np.linalg.norm(particle_j.r-particle_i.r)
     v_ij = np.linalg.norm(particle_i.velocity - particle_j.velocity)
     # print("Calculation of Udot based on interaction of")
     # print(f"Particle i = {particle_i}")
     # print(f"Particle j = {particle_j}")
     #formula from lecturer's notes i.e. loop body. separated out for clarity, may be reincorporated for less space intensive code.
-    particle_i.U_dot += calc_pressure_term(gamma,particle_i)*particle_j.m*v_ij*symmetrify_kernel(derivative_monaghan,r_ij,particle_i.h,particle_j.h) + 0.5*particle_j.m*calc_viscosity_term(particle_i,particle_j)*v_ij*symmetrify_kernel(kernel=derivative_monaghan,r=r_ij,h_i=particle_i.h,h_j=particle_j.h)
+    particle_i.U_dot += calc_pressure_term(gamma,particle_i)*particle_j.m*v_ij*symmetrify_kernel(derivative_monaghan,np.linalg.norm(r_ij),particle_i.h,particle_j.h) + 0.5*particle_j.m*calc_viscosity_term(particle_i,particle_j)*v_ij*symmetrify_kernel(kernel=derivative_monaghan,r=np.linalg.norm(r_ij),h_i=particle_i.h,h_j=particle_j.h)
 
 def calc_density_i(particle_i :Particle, neigh:int, prio_Queue:prioq, particles:np.array, kernel) ->None:
     particle_i.h = np.sqrt(-prio_Queue.key())
@@ -375,8 +377,8 @@ def sph_init(part_num:int, neigh:int)->np.ndarray:
     A = []
     for _ in range(No_of_part):
         p = Particle(r=np.random.rand(2),mass=1.0,vel=np.array([0.0,0.0]),U=10.0, id=_)
-        if _ == 225:
-            p.internal_energy = 1000.0
+        # if _ == 225:
+        #     p.internal_energy = 1000.0
         A.append(p)
     #initialise upred, vpred, density, acceleration,...   
     drift_one(particles=A,delta_t=0)
