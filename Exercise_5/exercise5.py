@@ -73,7 +73,9 @@ if __name__ == "__main__":
             else: lattice[i,j] = -1
     lattice_list, temp_list,mag_list = evolution(lattice=lattice,lattice_length=lattice_length)
     fig,axs = plt.subplots()
-    axs.scatter(x=temp_list,y=mag_list)
+    axs.scatter(x=temp_list,y=mag_list,s=2)
+    axs.set_xlabel("Temperature")
+    axs.set_ylabel("Mean Magentisation")
     fig.savefig(fname="magnetisation.png")
     fig1,axs1 = plt.subplots()
     animator = functools.partial(image_creator,results=lattice_list,axis=axs1)
