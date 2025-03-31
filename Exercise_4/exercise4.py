@@ -375,7 +375,7 @@ def sph_init(part_num:int, neigh:int)->np.ndarray:
     #init section
     #populate particles    
     A = []
-    for _ in range(No_of_part):
+    for _ in range(part_num):
         p = Particle(r=np.random.rand(2),mass=1.0,vel=np.array([0.0,0.0]),U=10.0, id=_)
         # if _ == 225:
         #     p.internal_energy = 1000.0
@@ -395,18 +395,18 @@ def sph_leapfrog( delta_t : float,A:np.array,neigh:int) -> np.ndarray:
 
 
 delta_t = 0.0003
-No_of_part = int(input("Number of points\n"))
+part_num = int(input("Number of points\n"))
 neighbours = int(input("neigbourhood points\n"))
 repetition = int(input("How many iterations?\n"))
-particle_trace = np.ndarray(shape=(No_of_part,repetition+1),dtype=Particle)
-particle_trace[:,0]=np.array(sph_init(part_num=No_of_part,neigh=neighbours))
+particle_trace = np.ndarray(shape=(repetition+1,part_num),dtype=Particle)
+particle_trace[0,:]=np.array(sph_init(part_num=part_num,neigh=neighbours))
 fig, axs = plt.subplots(nrows=1,ncols=2)
 artists=[]
 x = []
 y = []
 rho = []
 U = []
-for particle in particle_trace[:,0]:        
+for particle in particle_trace[0,:]:        
         x.append(particle.r[0])
         y.append(particle.r[1])
         rho.append(particle.density)
@@ -418,12 +418,12 @@ energy_plot = axs[1].scatter(x=x,y=y,c=U,cmap="seismic",s=2)
 artists.append([density_plot,energy_plot])
 for rep in range(repetition):
     print(rep)
-    particle_trace[:,rep+1] = sph_leapfrog(delta_t=delta_t,A=particle_trace[:,rep],neigh=neighbours) 
+    particle_trace[rep+1,:] = sph_leapfrog(delta_t=delta_t,A=particle_trace[rep,:],neigh=neighbours) 
     x = []
     y= []
     rho = []
     U = []   
-    for particle in particle_trace[:,rep+1]:        
+    for particle in particle_trace[rep+1,:]:        
         x.append(particle.r[0])
         y.append(particle.r[1])
         rho.append(particle.density)
@@ -432,7 +432,7 @@ for rep in range(repetition):
     energy_plot = axs[1].scatter(x=x,y=y,c=U,cmap="seismic",s=2)
     artists.append([density_plot,energy_plot])
 
-ani=an.ArtistAnimation(fig=fig,artists=artists,interval=300)
+ani=an.ArtistAnimation(fig=fig,artists=artists,interval=3000)
 ani.save(writer="ffmpeg", filename="/home/faye/UZH/6Sem/ESC202/animation-ex4.mp4")
 
 

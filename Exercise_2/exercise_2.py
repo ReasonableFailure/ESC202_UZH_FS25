@@ -126,7 +126,6 @@ def neighbour_search(pq:prioq, root:Cell, particles, r, rOffset): #this is ball_
         for i in range(root.index_low,root.index_high+1):
             part = particles[i]
             delta = ( part.r + rOffset) - r
-
             distance = -delta.dot(delta) # minus necessary because of min heap.
             # print(f"Particle[{i}] at {part.r} with offset {rOffset}.\nCentre is {r}\nDelta = {delta}, Distance = {distance}")
             if distance > pq.key():
