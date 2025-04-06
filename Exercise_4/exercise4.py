@@ -432,8 +432,8 @@ for rep in range(repetition):
     energy_plot = axs[1].scatter(x=x,y=y,c=U,cmap="seismic",s=2)
     artists.append([density_plot,energy_plot])
 
-ani=an.ArtistAnimation(fig=fig,artists=artists,interval=3000)
-ani.save(writer="ffmpeg", filename="/home/faye/UZH/6Sem/ESC202/animation-ex4.mp4")
+ani=an.ArtistAnimation(fig=fig,artists=artists,interval=10)
+ani.save(writer="ffmpeg", filename="/home/faye/UZH/6Sem/ESC202/animation-ex4-2.mp4")
 
 
 
