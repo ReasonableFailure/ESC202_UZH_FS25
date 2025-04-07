@@ -64,7 +64,7 @@ def image_creator(frame,results:list,axis):
 
 
 if __name__ == "__main__":
-    lattice_length = 150
+    lattice_length = 5
     lattice = np.zeros(shape=(lattice_length,lattice_length),dtype=int)
     for i in range(lattice_length):
         for j in range(lattice_length):
@@ -72,14 +72,14 @@ if __name__ == "__main__":
             if r >= 0.5: lattice[i,j] = 1
             else: lattice[i,j] = -1
     lattice_list, temp_list,mag_list = evolution(lattice=lattice,lattice_length=lattice_length)
-    fig,axs = plt.subplots()
-    axs.scatter(x=temp_list,y=mag_list,s=2)
-    axs.set_xlabel("Temperature")
-    axs.set_ylabel("Mean Magnetisation")
-    fig.savefig(fname="magnetisation_2.png")
-    fig1,axs1 = plt.subplots()
-    animator = functools.partial(image_creator,results=lattice_list,axis=axs1)
-    animation = ani(fig=fig1,func=animator,frames=len(lattice_list),interval=100)
-    animation.save(filename="ising_animation_2.mp4", fps=10,writer="ffmpeg")
+    # fig,axs = plt.subplots()
+    # axs.scatter(x=temp_list,y=mag_list,s=2)
+    # axs.set_xlabel("Temperature")
+    # axs.set_ylabel("Mean Magnetisation")
+    # fig.savefig(fname="magnetisation_2.png")
+    # fig1,axs1 = plt.subplots()
+    # animator = functools.partial(image_creator,results=lattice_list,axis=axs1)
+    # animation = ani(fig=fig1,func=animator,frames=len(lattice_list),interval=100)
+    # animation.save(filename="ising_animation_2.mp4", fps=10,writer="ffmpeg")
 
     
